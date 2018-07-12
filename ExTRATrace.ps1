@@ -7,7 +7,7 @@
 	server as well as the local machine.
 	Version History:
 	06/28/2017 - Initial Public Release.
-    07/12/2018 - Initial Public Release of version 2. - rewritten by Shaun Hopkins.
+	07/12/2018 - Initial Public Release of version 2. - rewritten by Shaun Hopkins.
 	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
 	BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
 	NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
