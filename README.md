@@ -17,3 +17,8 @@ Exchange 2010SP3, 2013, and 2016 supported as long as compatible tags are provid
   
     *.\ExTRAtrace.ps1 -Stop -LogPath "D:\logs\extra\"*
 
+# Credits
+
+Thanks to Matthew Huynh for his initial log collection script.
+https://blogs.technet.microsoft.com/mahuynh/2016/08/05/script-enable-and-collect-extra-tracing-across-all-exchange-servers/
+
