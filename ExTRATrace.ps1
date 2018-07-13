@@ -64,6 +64,19 @@ if (($Start -and $Generate) -or ($Stop -and $Generate) -or ($Start -and $Stop) -
 	exit
 }
 
+function Set-CB() {
+    Param(
+      [Parameter(ValueFromPipeline=$true)]
+      [string] $text
+    )
+    Add-Type -AssemblyName System.Windows.Forms
+    $tb = New-Object System.Windows.Forms.TextBox
+    $tb.Multiline = $true
+    $tb.Text = $text
+    $tb.SelectAll()
+    $tb.Copy()
+}
+
 function CreateExtraTraceConfig
 {
 	$string = Read-Host -Prompt 'Please enter ExTRA configuration'
@@ -89,6 +102,7 @@ Function StartTrace
 	$servlist = GetExchServers
 	CreateExtraTraceConfig
 	$filepath = "c:\tracing\"
+	$ts = get-date -f HHmmssddMMyy
 	foreach ($s in $servlist)
 	{
 		Write-Host "Enabling ExTRA tracing on" ($s) -ForegroundColor green $nl
@@ -99,7 +113,7 @@ Function StartTrace
 			if (!$CheckExTRA)
 			{
 				Write-Host "Creating Trace... " -NoNewline
-				$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-ExTRA -s $s -ow -f bin -max 1024"
+				$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-ExTRA-$ts.etl -s $s -ow -f bin -max 1024"
 				# Create ExTRA Trace
 				Write-Debug $ExTRAcmd
 				Invoke-Expression -Command $ExTRAcmd
@@ -141,7 +155,7 @@ Function StartTrace
 				$cmd = "logman delete ExchangeDebugTraces -s $s"
 				$DeleteExTRA = Invoke-Expression -Command $Cmd 
 				# Create ExTRA Trace
-				$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-ExTRA -s $s -ow -f bin -max 1024"
+				$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-ExTRA-$ts.etl -s $s -ow -f bin -max 1024"
 				Write-Debug $ExTRAcmd
 				Invoke-Expression -Command $ExTRAcmd
 				while (!($CheckifCreated = @(logman query -s $s) -match "ExchangeDebugTraces"))
@@ -165,7 +179,7 @@ Function StopTrace
 {
 	if ($logpath -eq "") {$logpath = "C:\extra\"} elseif ($logpath.EndsWith("\")) {$logpath = $logpath} else {$logpath = $logpath + "\"}
 	# Convert logpath to UNC adminshare path
-	$TRACES_FILEPATH = "\\" + (hostname) + "\"+ $logpath.replace(':','$')
+	$TRACES_FILEPATH = "\\" + (hostname) + "\"+ $logpath.replace(':','$') + $(get-date -f HHmmssddMMyy)
 	$servlist = GetExchServers
 	foreach ($s in $servlist)
 	{
@@ -210,7 +224,7 @@ Function Generate
     $EncodedText =[Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($string))
     Write-Host "Send the following line to customer for ExTRA Trace Configuration.`nConfig has been copied to clipboard" -ForegroundColor Green $nl
 	Start-Sleep 1
-	Set-Clipboard -Value $EncodedText
+	Set-CB $EncodedText
     Write-Host $EncodedText + $nl
 
 }
