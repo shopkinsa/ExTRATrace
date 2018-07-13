@@ -180,6 +180,11 @@ Function StopTrace
 	if ($logpath -eq "") {$logpath = "C:\extra\"} elseif ($logpath.EndsWith("\")) {$logpath = $logpath} else {$logpath = $logpath + "\"}
 	# Convert logpath to UNC adminshare path
 	$TRACES_FILEPATH = "\\" + (hostname) + "\"+ $logpath.replace(':','$') + $(get-date -f HHmmssddMMyy)
+	# create target path if it does not exist yet
+	if (-not (Test-Path $TRACES_FILEPATH)) {
+		New-Item $TRACES_FILEPATH -ItemType Directory | Out-Null
+		Write-Host "Created $TRACES_FILEPATH as it did not exist yet" $nl
+	}
 	$servlist = GetExchServers
 	foreach ($s in $servlist)
 	{
