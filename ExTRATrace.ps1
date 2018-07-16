@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-    Author: Shaun Hopkins
+	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
 	server as well as the local machine.
@@ -22,7 +22,7 @@
     from Exchange.
     
     Exchange 2010SP3, 2013, and 2016 supported as long as compatible tags are provided. 
-.PARAMETER Server
+.PARAMETER Servers
 	This optional parameter allows multiple target Exchange servers to be specified. If it is not the 		
 	local server is assumed.
 .PARAMETER Start
@@ -50,7 +50,7 @@
 
 [CmdletBinding()]
 Param(
- [string]$Server,
+ [string]$Servers,
  [string]$logpath, 
  [switch]$Start,
  [switch]$FreeBusy,
@@ -61,7 +61,6 @@ Param(
 
 # network path to save the resulting traces (default is local c:\temp\extra)
 $script:nl = "`r`n"
-$servers = $null
 # check that user ran with either Start or Stop switch params
 if (($Start -and $Generate) -or ($Stop -and $Generate) -or ($Start -and $Stop) -or (-not $Start -and -not $Stop -and -not $Generate)) {
 	Write-Error "Please specify only 1 parameter: -Start -Stop or -Generate."
