@@ -1,6 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
+	Version: 0.9.1
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -20,7 +21,6 @@
     After collection is stopped logs are collected to local server for review.
     Engineers can generate ExTRA configuration strings to provide to end users to collect specific data
     from Exchange.
-    
     Exchange 2010SP3, 2013, and 2016 supported as long as compatible tags are provided. 
 .PARAMETER Servers
 	This optional parameter allows multiple target Exchange servers to be specified. If it is not the 		
