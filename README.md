@@ -12,8 +12,16 @@ Exchange 2010SP3, 2013, and 2016 supported as long as compatible tags are provid
   - Start ExTRA log generation after prompting for configuration
   
     *.\ExTRAtrace.ps1 -Start*
+    
+  - Start ExTRA log generation with prebuilt Free/Busy configuration
+  
+    *.\ExTRAtrace.ps1 -Start -Freebusy*
 
-  - Stop ExTRA tracing and consolidate logs into D:\logs\extra\
+  - Stop ExTRA tracing
+  
+    *.\ExTRAtrace.ps1 -Stop*
+    
+   - Stop ExTRA tracing and consolidate logs into D:\logs\extra\
   
     *.\ExTRAtrace.ps1 -Stop -LogPath "D:\logs\extra\"*
 
