@@ -19,11 +19,11 @@ Exchange 2010SP3, 2013, and 2016 supported as long as compatible tags are provid
     
    - Stop ExTRA tracing and consolidate logs into D:\logs\extra\
    
-    *.\ExTRAtrace.ps1 -Stop -LogPath "D:\logs\extra\"*
+   *.\ExTRAtrace.ps1 -Stop -LogPath "D:\logs\extra\"*
     
    - Interactive Configuration generator
    
-    *.\ExTRAtrace.ps1 -Generate*
+   *.\ExTRAtrace.ps1 -Generate*
 
 # Credits
 
