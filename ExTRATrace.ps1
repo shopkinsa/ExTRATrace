@@ -104,9 +104,34 @@ function GetExchServers
 	return $return
 }
 
+Function ConfirmAnswer
+{
+	$Confirm = "" 
+	while ($Confirm -eq "") 
+	{ 
+		switch (Read-Host "(Y/N)") 
+		{ 
+			"yes" {$Confirm = "yes"} 
+			"no" {$Confirm = "No"} 
+			"y" {$Confirm = "yes"} 
+			"n" {$Confirm = "No"} 
+			default {Write-Host "Invalid entry, please answer question again " -NoNewline} 
+		} 
+	} 
+	return $Confirm 
+}
+
 Function StartTrace 
 {
+	if ($manual)
+	{
+		#Code for running trace with existing EnabledTraces.Config
+		Write-Host "Creating Trace... " -NoNewline
+	}
+	else
+	{
 	CreateExtraTraceConfig
+	}
 	$servlist = GetExchServers
 	$filepath = "c:\tracing\"
 	$ts = get-date -f HHmmssddMMyy
@@ -129,7 +154,7 @@ Function StartTrace
 					Write-Host " Traced failed to create. Would you like to try creating it again? " -NoNewline
 					$answer = ConfirmAnswer
 					if ($answer -eq "yes"){Invoke-Expression -Command $ExTRAcmd}
-					if ($answer -eq "no"){Continue}
+					if ($answer -eq "no"){End}
 				}
 				Write-Host "COMPLETED" -ForegroundColor green
 				Write-Host "Starting Trace... " -NoNewline
@@ -170,7 +195,7 @@ Function StartTrace
 					Write-Host "ExTRA Traced failed to create. Would you like to try creating it again? " -NoNewline
 					$answer = ConfirmAnswer
 					if ($answer -eq "yes"){Invoke-Expression -Command $ExTRAcmd}
-					if ($answer -eq "no"){Continue}
+					if ($answer -eq "no"){End}
 				}
 			}
 		}
