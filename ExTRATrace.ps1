@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-	Version: 0.9.2
+	Version: 0.9.4
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -34,7 +34,7 @@
 .PARAMETER Generate
 	Used to generate Base64 configuration file for debuging tags
 .PARAMETER LogPath
-	Specify local log consolidation path. Only used with -Stop
+	Specify local log consolidation path.
 .EXAMPLE
 	.\ExTRAtrace.ps1 -Generate
 	Interactive Configuration generator
@@ -42,8 +42,11 @@
 	.\ExTRAtrace.ps1 -Start
 	Start ExTRA log generation after prompting for configuration
 .EXAMPLE
-	.\ExTRAtrace.ps1 -Stop -LogPath "D:\logs\extra\"
-	Stop ExTRA tracing and consolidate logs into D:\logs\extra\
+	.\ExTRAtrace.ps1 -Start -LogPath "D:\logs\extra\"
+	Start ExTRA log generation after prompting for configuration
+.EXAMPLE
+	.\ExTRAtrace.ps1 -Start -Servers NA-EXCH01,NA-EXCH02,NA-EXCH04
+	Start ExTRA log generation on multiple servers
 .LINK
     https://blogs.technet.microsoft.com/mahuynh/2016/08/05/script-enable-and-collect-extra-tracing-across-all-exchange-servers/
 #>
@@ -54,7 +57,6 @@ Param(
  [string]$logpath, 
  [switch]$Start,
  [switch]$FreeBusy,
- [switch]$Stop,
  [switch]$Generate
  
 )
@@ -81,7 +83,7 @@ function Set-CB() {
 
 function CreateExtraTraceConfig
 {
-	$string = "TraceLevels:Debug,Warning,Error,Fatal,Info,Pfd`nSystemLogging:SystemNet`n"
+	$string = "TraceLevels:Debug,Warning,Error,Fatal,Info,Pfd`n"
 	if ($FreeBusy) {$string += [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String('QURQcm92aWRlcjogVG9wb2xvZ3lQcm92aWRlciwgQURUb3BvbG9neSwgQ29ubmVjdGlvbiwgQ29ubmVjdGlvbkRldGFpbHMsIEdldENvbm5lY3Rpb24sIEFERmluZCwgQURSZWFkLCBBRFJlYWREZXRhaWxzLCBBRFNhdmUsIEFEU2F2ZURldGFpbHMsIEFERGVsZXRlLCBWYWxpZGF0aW9uLCBBRE5vdGlmaWNhdGlvbnMsIERpcmVjdG9yeUV4Y2VwdGlvbiwgTGRhcEZpbHRlckJ1aWxkZXIsIEFEUHJvcGVydHlSZXF1ZXN0LCBBRE9iamVjdCwgQ29udGVudFR5cGVNYXBwaW5nLCBMY2lkTWFwcGVyLCBSZWNpcGllbnRVcGRhdGVTZXJ2aWNlLCBVTUF1dG9BdHRlbmRhbnQsIEV4Y2hhbmdlVG9wb2xvZ3ksIFBlcmZDb3VudGVycywgQ2xpZW50VGhyb3R0bGluZywgU2VydmVyU2V0dGluZ3NQcm92aWRlciwgUmV0cnlNYW5hZ2VyLCBTeXN0ZW1Db25maWd1cmF0aW9uQ2FjaGUsIEZlZGVyYXRlZElkZW50aXR5LCBGYXVsdEluamVjdGlvbiwgQWRkcmVzc0xpc3QsIE5zcGlScGNDbGllbnRDb25uZWN0aW9uLCBTY29wZVZlcmlmaWNhdGlvbiwgU2NoZW1hSW5pdGlhbGl6YXRpb24sIElzTWVtYmVyT2ZSZXNvbHZlciwgT3dhU2VnbWVudGF0aW9uLCBBRFBlcmZvcm1hbmNlLCBSZXNvdXJjZUhlYWx0aE1hbmFnZXIsIEJ1ZGdldERlbGF5LCBHTFMsIE1TZXJ2LCBUZW5hbnRSZWxvY2F0aW9uLCBTdGF0ZU1hbmFnZW1lbnQsIFNlcnZlckNvbXBvbmVudFN0YXRlTWFuYWdlciwgU2Vzc2lvblNldHRpbmdzLCBBRENvbmZpZ0xvYWRlciwgU2xpbVRlbmFudCwgVGVuYW50VXBncmFkZVNlcnZpY2VsZXQsIERpcmVjdG9yeVRhc2tzLCBDb21wbGlhbmNlLCBMaW5rZWRSb2xlR3JvdXAsIE1TZXJ2RGF0YSwgQWNjb3VudFZhbGlkYXRpb24sIEFER2xvYmFsQ29uZmlnLCBBZ2dyZWdhdGVSZWNpcGllbnQsIFRlbmFudEh5ZHJhdGlvblNlcnZpY2VsZXQsIFRlbmFudFJlcGFpclNjYW5uZXJTZXJ2aWNlbGV0LCBUZW5hbnRSZXBhaXJQcm9jZXNzb3JTZXJ2aWNlbGV0LCBUZW5hbnRBbGxvd0Jsb2NrTGlzdEFsbG93QmxvY2tMaXN0LCBEZWRpY2F0ZWRNYWlsYm94UGxhbnNDdXN0b21BdHRyaWJ1dGUKSW5mb1dvcmtlci5BdmFpbGFiaWxpdHk6IEluaXRpYWxpemUsIFNlY3VyaXR5LCBDYWxlbmRhclZpZXcsIENvbmZpZ3VyYXRpb24sIFB1YmxpY0ZvbGRlclJlcXVlc3QsIEludHJhU2l0ZUNhbGVuZGFyUmVxdWVzdCwgTWVldGluZ1N1Z2dlc3Rpb25zLCBBdXRvRGlzY292ZXIsIE1haWxib3hDb25uZWN0aW9uQ2FjaGUsIFBGRCwgRG5zUmVhZGVyLCBNZXNzYWdlLCBGYXVsdEluamVjdGlvbkluZm9Xb3JrZXIuUmVxdWVzdERpc3BhdGNoOiBSZXF1ZXN0Um91dGluZywgRGlzdHJpYnV0aW9uTGlzdEhhbmRsaW5nLCBQcm94eVdlYlJlcXVlc3QsIEZhdWx0SW5qZWN0aW9uLCBHZXRGb2xkZXJSZXF1ZXN0TVNFeGNoYW5nZUF1dG9kaXNjb3ZlcjogRnJhbWV3b3JrLCBPdXRsb29rUHJvdmlkZXIsIE1vYmlsZVN5bmNQcm92aWRlciwgRmF1bHRJbmplY3Rpb24sIEF1dGhNZXRhZGF0YQpNU0V4Y2hhbmdlV2ViU2VydmljZXM6IENhbGVuZGFyQWxnb3JpdGhtLCBDYWxlbmRhckRhdGEsIENhbGVuZGFyQ2FsbCwgQ29tbW9uQWxnb3JpdGhtLCBGb2xkZXJBbGdvcml0aG0sIEZvbGRlckRhdGEsIEZvbGRlckNhbGwsIEl0ZW1BbGdvcml0aG0sIEl0ZW1EYXRhLCBJdGVtQ2FsbCwgRXhjZXB0aW9uLCBTZXNzaW9uQ2FjaGUsIEV4Y2hhbmdlUHJpbmNpcGFsQ2FjaGUsIFNlYXJjaCwgVXRpbEFsZ29yaXRobSwgVXRpbERhdGEsIFV0aWxDYWxsLCBTZXJ2ZXJUb1NlcnZlckF1dGhaLCBTZXJ2aWNlQ29tbWFuZEJhc2VDYWxsLCBTZXJ2aWNlQ29tbWFuZEJhc2VEYXRhLCBGYWNhZGVCYXNlQ2FsbCwgQ3JlYXRlSXRlbUNhbGwsIEdldEl0ZW1DYWxsLCBVcGRhdGVJdGVtQ2FsbCwgRGVsZXRlSXRlbUNhbGwsIFNlbmRJdGVtQ2FsbCwgTW92ZUNvcHlDb21tYW5kQmFzZUNhbGwsIE1vdmVDb3B5SXRlbUNvbW1hbmRCYXNlQ2FsbCwgQ29weUl0ZW1DYWxsLCBNb3ZlSXRlbUNhbGwsIENyZWF0ZUZvbGRlckNhbGwsIEdldEZvbGRlckNhbGwsIFVwZGF0ZUZvbGRlckNhbGwsIERlbGV0ZUZvbGRlckNhbGwsIE1vdmVDb3B5Rm9sZGVyQ29tbWFuZEJhc2VDYWxsLCBDb3B5Rm9sZGVyQ2FsbCwgTW92ZUZvbGRlckNhbGwsIEZpbmRDb21tYW5kQmFzZUNhbGwsIEZpbmRJdGVtQ2FsbCwgRmluZEZvbGRlckNhbGwsIFV0aWxDb21tYW5kQmFzZUNhbGwsIEV4cGFuZERMQ2FsbCwgUmVzb2x2ZU5hbWVzQ2FsbCwgU3Vic2NyaWJlQ2FsbCwgVW5zdWJzY3JpYmVDYWxsLCBHZXRFdmVudHNDYWxsLCBTdWJzY3JpcHRpb25zLCBTdWJzY3JpcHRpb25CYXNlLCBQdXNoU3Vic2NyaXB0aW9uLCBTeW5jRm9sZGVySGllcmFyY2h5Q2FsbCwgU3luY0ZvbGRlckl0ZW1zQ2FsbCwgU3luY2hyb25pemF0aW9uLCBQZXJmb3JtYW5jZU1vbml0b3IsIENvbnZlcnRJZENhbGwsIEdldERlbGVnYXRlQ2FsbCwgQWRkRGVsZWdhdGVDYWxsLCBSZW1vdmVEZWxlZ2F0ZUNhbGwsIFVwZGF0ZURlbGVnYXRlQ2FsbCwgUHJveHlFdmFsdWF0b3IsIEdldE1haWxUaXBzQ2FsbCwgQWxsUmVxdWVzdHMsIEF1dGhlbnRpY2F0aW9uLCBXQ0YsIEdldFVzZXJDb25maWd1cmF0aW9uQ2FsbCwgQ3JlYXRlVXNlckNvbmZpZ3VyYXRpb25DYWxsLCBEZWxldGVVc2VyQ29uZmlndXJhdGlvbkNhbGwsIFVwZGF0ZVVzZXJDb25maWd1cmF0aW9uQ2FsbCwgVGhyb3R0bGluZywgRXh0ZXJuYWxVc2VyLCBHZXRPcmdhbml6YXRpb25Db25maWd1cmF0aW9uQ2FsbCwgR2V0Um9vbXNDYWxsLCBHZXRGZWRlcmF0aW9uSW5mb3JtYXRpb24sIFBhcnRpY2lwYW50TG9va3VwQmF0Y2hpbmcsIEFsbFJlc3BvbnNlcywgRmF1bHRJbmplY3Rpb24sIEdldEluYm94UnVsZXNDYWxsLCBVcGRhdGVJbmJveFJ1bGVzQ2FsbCwgR2V0Q0FTTWFpbGJveCwgRmFzdFRyYW5zZmVyLCBTeW5jQ29udmVyc2F0aW9uQ2FsbCwgRUxDLCBBY3Rpdml0eUNvbnZlcnRlciwgU3luY1Blb3BsZUNhbGwsIEdldENhbGVuZGFyRm9sZGVyc0NhbGwsIEdldFJlbWluZGVyc0NhbGwsIFN5bmNDYWxlbmRhckNhbGwsIFBlcmZvcm1SZW1pbmRlckFjdGlvbkNhbGwsIFByb3Zpc2lvbkNhbGwsIFJlbmFtZUNhbGVuZGFyR3JvdXBDYWxsLCBEZWxldGVDYWxlbmRhckdyb3VwQ2FsbCwgQ3JlYXRlQ2FsZW5kYXJDYWxsLCBSZW5hbWVDYWxlbmRhckNhbGwsIERlbGV0ZUNhbGVuZGFyQ2FsbCwgU2V0Q2FsZW5kYXJDb2xvckNhbGwsIFNldENhbGVuZGFyR3JvdXBPcmRlckNhbGwsIENyZWF0ZUNhbGVuZGFyR3JvdXBDYWxsLCBNb3ZlQ2FsZW5kYXJDYWxsLCBHZXRGYXZvcml0ZXNDYWxsLCBVcGRhdGVGYXZvcml0ZUZvbGRlckNhbGwsIEdldFRpbWVab25lT2Zmc2V0c0NhbGwsIEF1dGhvcml6YXRpb24sIFNlbmRDYWxlbmRhclNoYXJpbmdJbnZpdGVDYWxsLCBHZXRDYWxlbmRhclNoYXJpbmdSZWNpcGllbnRJbmZvQ2FsbCwgQWRkU2hhcmVkQ2FsZW5kYXJDYWxsLCBGaW5kUGVvcGxlQ2FsbCwgRmluZFBsYWNlc0NhbGwsIFVzZXJQaG90b3MsIEdldFBlcnNvbmFDYWxsLCBHZXRFeHRlbnNpYmlsaXR5Q29udGV4dENhbGwsIFN1YnNjcmliZUludGVybmFsQ2FsZW5kYXJDYWxsLCBTdWJzY3JpYmVJbnRlcm5ldENhbGVuZGFyQ2FsbCwgR2V0VXNlckF2YWlsYWJpbGl0eUludGVybmFsQ2FsbCwgQXBwbHlDb252ZXJzYXRpb25BY3Rpb25DYWxsLCBHZXRDYWxlbmRhclNoYXJpbmdQZXJtaXNzaW9uc0NhbGwsIFNldENhbGVuZGFyU2hhcmluZ1Blcm1pc3Npb25zQ2FsbCwgU2V0Q2FsZW5kYXJQdWJsaXNoaW5nQ2FsbCwgVUNTLCBHZXRUYXNrRm9sZGVyc0NhbGwsIENyZWF0ZVRhc2tGb2xkZXJDYWxsLCBSZW5hbWVUYXNrRm9sZGVyQ2FsbCwgRGVsZXRlVGFza0ZvbGRlckNhbGwsIE1hc3RlckNhdGVnb3J5TGlzdENhbGwsIEdldENhbGVuZGFyRm9sZGVyQ29uZmlndXJhdGlvbkNhbGwsIE9ubGluZU1lZXRpbmcsIE1vZGVybkdyb3VwcywgQ3JlYXRlVW5pZmllZE1haWxib3gsIEFkZEFnZ3JlZ2F0ZWRBY2NvdW50LCBSZW1pbmRlcnMsIEdldEFnZ3JlZ2F0ZWRBY2NvdW50LCBSZW1vdmVBZ2dyZWdhdGVkQWNjb3VudCwgU2V0QWdncmVnYXRlZEFjY291bnQsIFdlYXRoZXIsIEdldFBlb3BsZUlLbm93R3JhcGhDYWxsLCBBZGRFdmVudFRvTXlDYWxlbmRhciwgQ29udmVyc2F0aW9uQWdncmVnYXRpb24sIElzT2ZmaWNlMzY1RG9tYWluLCBSZWZyZXNoR0FMQ29udGFjdHNGb2xkZXIsIE9wdGlvbnMsIE9wZW5UZW5hbnRNYW5hZ2VyLCBNYXJrQWxsSXRlbXNBc1JlYWQsIEdldENvbnZlcnNhdGlvbkl0ZW1zLCBHZXRMaWtlcnMsIEdldFVzZXJVbmlmaWVkR3JvdXBzLCBQZW9wbGVJQ29tbXVuaWNhdGVXaXRoLCBTeW5jUGVyc29uYUNvbnRhY3RzQmFzZSwgU3luY0F1dG9Db21wbGV0ZVJlY2lwaWVudHMsIFNldFVuaWZpZWRHcm91cEZhdm9yaXRlU3RhdGUsIEdldFVuaWZpZWRHcm91cERldGFpbHMsIEdldFVuaWZpZWRHcm91cE1lbWJlcnMsIFNldFVuaWZpZWRHcm91cFVzZXJTdWJzY3JpYmVTdGF0ZSwgSm9pblByaXZhdGVVbmlmaWVkR3JvdXAsIEFwcGx5QnVsa0l0ZW1BY3Rpb25DYWxsLCBDcmVhdGVTd2VlcFJ1bGVGb3JTZW5kZXJDYWxsLCBDcmVhdGVVbmlmaWVkR3JvdXAsIFZhbGlkYXRlVW5pZmllZEdyb3VwQWxpYXMsIEltcG9ydENhbGVuZGFyRXZlbnQsIFJlbW92ZVVuaWZpZWRHcm91cCwgU2V0VW5pZmllZEdyb3VwTWVtYmVyc2hpcFN0YXRlLCBHZXRVbmlmaWVkR3JvdXBVbnNlZW5EYXRhLCBTZXRVbmlmaWVkR3JvdXBVbnNlZW5EYXRhLCBVcGRhdGVVbmlmaWVkR3JvdXAsIEdldEF2YWlsYWJsZUN1bHR1cmVzLCBVc2VyU29jaWFsQWN0aXZpdHlOb3RpZmljYXRpb24sIEdldFNvY2lhbEFjdGl2aXR5Tm90aWZpY2F0aW9ucywgQ2hhbm5lbEV2ZW50LCBHZXRVbmlmaWVkR3JvdXBzU2V0dGluZ3MsIEdldFBlb3BsZUluc2lnaHRzLCBHZXRVbmlmaWVkR3JvdXBVbnNlZW5Db3VudCwgU2V0VW5pZmllZEdyb3VwTGFzdFZpc2l0ZWRUaW1lLCBDb250YWN0UHJvcGVydHlTdWdnZXN0aW9uLCBHZXRVbmlmaWVkR3JvdXBTZW5kZXJSZXN0cmljdGlvbnMsIFNldFVuaWZpZWRHcm91cFNlbmRlclJlc3RyaWN0aW9ucywgQ29udmVydEljc1RvQ2FsZW5kYXJJdGVtLCBNZXNzYWdlTGF0ZW5jeSwgR2V0UGVvcGxlSW5zaWdodHNUb2tlbnMsIFNldFBlb3BsZUluc2lnaHRzVG9rZW5zLCBEZWxldGVQZW9wbGVJbnNpZ2h0c1Rva2VucywgRXhlY3V0ZVNlYXJjaCwgUHJvY2Vzc0NvbXBsaWFuY2VPcGVyYXRpb25DYWxsLCBEZWxlZ2F0ZUNvbW1hbmRCYXNlLCBHZXRTdWdnZXN0ZWRVbmlmaWVkR3JvdXBzLCBPRGF0YUNvbW1vbiwgT0RhdGFQdXNoTm90aWZpY2F0aW9uTmV0d29ya2luZ0xheWVyOiBETlMsIE5ldHdvcmssIEF1dGhlbnRpY2F0aW9uLCBDZXJ0aWZpY2F0ZSwgRGlyZWN0b3J5U2VydmljZXMsIFByb2Nlc3NNYW5hZ2VyLCBIdHRwQ2xpZW50LCBQcm90b2NvbExvZywgUmlnaHRzTWFuYWdlbWVudCwgTGl2ZUlEQXV0aGVudGljYXRpb25DbGllbnQsIERlbHRhU3luY0NsaWVudCwgRGVsdGFTeW5jUmVzcG9uc2VIYW5kbGVyLCBMYW5ndWFnZVBhY2tJbmZvLCBXU1RydXN0LCBFd3NDbGllbnQsIENvbmZpZ3VyYXRpb24sIFNtdHBDbGllbnQsIFhyb3BTZXJ2aWNlQ2xpZW50LCBYcm9wU2VydmljZVNlcnZlciwgQ2xhaW0sIEZhY2Vib29rLCBMaW5rZWRJbiwgTW9uaXRvcmluZ1dlYkNsaWVudCwgUnVsZXNCYXNlZEh0dHBNb2R1bGUsIEFBRENsaWVudCwgQXBwU2V0dGluZ3MsIENvbW1vbgo='))} 
 	elseif ($Transport) {$string += [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String('STRINGHERE'))}
 	elseif ($Manual) {$string += [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String('STRINGHERE'))}
@@ -104,9 +106,34 @@ function GetExchServers
 	return $return
 }
 
+Function ConfirmAnswer
+{
+	$Confirm = "" 
+	while ($Confirm -eq "") 
+	{ 
+		switch (Read-Host "(Y/N)") 
+		{ 
+			"yes" {$Confirm = "yes"} 
+			"no" {$Confirm = "No"} 
+			"y" {$Confirm = "yes"} 
+			"n" {$Confirm = "No"} 
+			default {Write-Host "Invalid entry, please answer question again " -NoNewline} 
+		} 
+	} 
+	return $Confirm 
+}
+
 Function StartTrace 
 {
+	if ($manual)
+	{
+		#Code for running trace with existing EnabledTraces.Config
+		Write-Host "Creating Trace... " -NoNewline
+	}
+	else
+	{
 	CreateExtraTraceConfig
+	}
 	$servlist = GetExchServers
 	$filepath = "c:\tracing\"
 	$ts = get-date -f HHmmssddMMyy
@@ -129,7 +156,7 @@ Function StartTrace
 					Write-Host " Traced failed to create. Would you like to try creating it again? " -NoNewline
 					$answer = ConfirmAnswer
 					if ($answer -eq "yes"){Invoke-Expression -Command $ExTRAcmd}
-					if ($answer -eq "no"){Continue}
+					if ($answer -eq "no"){End}
 				}
 				Write-Host "COMPLETED" -ForegroundColor green
 				Write-Host "Starting Trace... " -NoNewline
@@ -170,7 +197,7 @@ Function StartTrace
 					Write-Host "ExTRA Traced failed to create. Would you like to try creating it again? " -NoNewline
 					$answer = ConfirmAnswer
 					if ($answer -eq "yes"){Invoke-Expression -Command $ExTRAcmd}
-					if ($answer -eq "no"){Continue}
+					if ($answer -eq "no"){End}
 				}
 			}
 		}
@@ -205,7 +232,6 @@ Function StopTrace
 			$StopTrace = Invoke-Expression -Command $cmd
 			if ($Error){Write-host "Error encountered" -ForegroundColor Red; Continue}
 			else {Write-Host "COMPLETED`n" -ForegroundColor Green}
-			
 			Write-Host "Removing trace on $s... " -NoNewline
 			$Error.Clear()
 			$cmd = "logman delete ExchangeDebugTraces -s $s"
@@ -244,5 +270,5 @@ Function Generate
 }
 
 if ($generate) {Generate; exit;}
-if ($start) {StartTrace; exit;}
+if ($start) {StartTrace; [void](Read-Host 'Press Enter to continue…'); StopTrace; exit;}
 if ($stop) {StopTrace; exit;}
