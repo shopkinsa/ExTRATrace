@@ -53,7 +53,7 @@
 
 [CmdletBinding()]
 Param(
- [string]$Servers,
+ [Array]$Servers,
  [string]$logpath, 
  [switch]$Start,
  [switch]$FreeBusy,
