@@ -25,11 +25,11 @@ Exchange 2010SP3, 2013, and 2016 supported as long as compatible tags are provid
 
 Parameter | Description
 --------- | -----------
--Generate | Interactive session to create an ExTraTrace configuration 
+-Generate | Interactive session to create an ExTRA Trace configuration 
 -FreeBusy | Use preconfigured tags for Free/Busy diagnostic
 -LogPath | Sets the directory location of where the ETL files will be consolidated. Default Location is C:\extra on the local server.
 -Manual | (WIP) Use prebuilt EnabledTraces.Config. Must be located in the same path as ExTRATrace.ps1
--Servers | Creates ExTRA trace on remote server(s) specified.  If no server(s) is specified, the local server will be used.
+-Servers | Specify remote server(s) for tracing.  If no server(s) is specified, the local server will be used.
 -Start | Starts an ExTRA trace
 
 # Credits
