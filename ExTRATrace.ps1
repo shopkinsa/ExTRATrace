@@ -263,7 +263,6 @@ Function StopTrace
 
 Function Generate
 {
-
 	$comment = $nul
     Write-Host "Input trace lines. Empty line to finish" -ForegroundColor Green $nl																					 
     #prompt for trace definations
