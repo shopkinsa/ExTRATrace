@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-	Version: 0.9.6
+	Version: 0.9.7
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -54,21 +54,22 @@
 [CmdletBinding()]
 Param(
  [Array]$Servers,
- [string]$logpath, 
+ [string]$LogPath, 
  [switch]$Start,
  [switch]$FreeBusy,
  [switch]$Generate,
- [switch]$manual
+ [switch]$Manual
  
 )
 
 $script:nl = "`r`n"
 # check that user ran with either Start or Stop switch params
-if (($Start -and $Generate) -or ($Stop -and $Generate) -or ($Start -and $Stop) -or (-not $Start -and -not $Stop -and -not $Generate)) {
-	Write-Error "Please specify only 1 parameter: -Start -Stop or -Generate."
+if (($Start -and $Generate)) {
+	Write-Error "Please specify only 1 parameter: -Start or -Generate."
 	exit
 }
 
+# Set clipboard
 function Set-CB() {
     Param(
       [Parameter(ValueFromPipeline=$true)]
@@ -87,8 +88,16 @@ function CreateExtraTraceConfig
 	$string = "TraceLevels:Debug,Warning,Error,Fatal,Info,Pfd`n"
 	if ($FreeBusy) {$string += [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String('U3lzdGVtTG9nZ2luZzogU3lzdGVtTmV0Ck1TRXhjaGFuZ2VXZWJTZXJ2aWNlczogQ2FsZW5kYXJBbGdvcml0aG0sIENhbGVuZGFyRGF0YSwgQ2FsZW5kYXJDYWxsLCBDb21tb25BbGdvcml0aG0sIEZvbGRlckFsZ29yaXRobSwgRm9sZGVyRGF0YSwgRm9sZGVyQ2FsbCwgSXRlbUFsZ29yaXRobSwgSXRlbURhdGEsIEl0ZW1DYWxsLCBFeGNlcHRpb24sIFNlc3Npb25DYWNoZSwgRXhjaGFuZ2VQcmluY2lwYWxDYWNoZSwgU2VhcmNoLCBVdGlsQWxnb3JpdGhtLCBVdGlsRGF0YSwgVXRpbENhbGwsIFNlcnZlclRvU2VydmVyQXV0aFosIFNlcnZpY2VDb21tYW5kQmFzZUNhbGwsIFNlcnZpY2VDb21tYW5kQmFzZURhdGEsIEZhY2FkZUJhc2VDYWxsLCBDcmVhdGVJdGVtQ2FsbCwgR2V0SXRlbUNhbGwsIFVwZGF0ZUl0ZW1DYWxsLCBEZWxldGVJdGVtQ2FsbCwgU2VuZEl0ZW1DYWxsLCBNb3ZlQ29weUNvbW1hbmRCYXNlQ2FsbCwgTW92ZUNvcHlJdGVtQ29tbWFuZEJhc2VDYWxsLCBDb3B5SXRlbUNhbGwsIE1vdmVJdGVtQ2FsbCwgQ3JlYXRlRm9sZGVyQ2FsbCwgR2V0Rm9sZGVyQ2FsbCwgVXBkYXRlRm9sZGVyQ2FsbCwgRGVsZXRlRm9sZGVyQ2FsbCwgTW92ZUNvcHlGb2xkZXJDb21tYW5kQmFzZUNhbGwsIENvcHlGb2xkZXJDYWxsLCBNb3ZlRm9sZGVyQ2FsbCwgRmluZENvbW1hbmRCYXNlQ2FsbCwgRmluZEl0ZW1DYWxsLCBGaW5kRm9sZGVyQ2FsbCwgVXRpbENvbW1hbmRCYXNlQ2FsbCwgRXhwYW5kRExDYWxsLCBSZXNvbHZlTmFtZXNDYWxsLCBTdWJzY3JpYmVDYWxsLCBVbnN1YnNjcmliZUNhbGwsIEdldEV2ZW50c0NhbGwsIFN1YnNjcmlwdGlvbnMsIFN1YnNjcmlwdGlvbkJhc2UsIFB1c2hTdWJzY3JpcHRpb24sIFN5bmNGb2xkZXJIaWVyYXJjaHlDYWxsLCBTeW5jRm9sZGVySXRlbXNDYWxsLCBTeW5jaHJvbml6YXRpb24sIFBlcmZvcm1hbmNlTW9uaXRvciwgQ29udmVydElkQ2FsbCwgR2V0RGVsZWdhdGVDYWxsLCBBZGREZWxlZ2F0ZUNhbGwsIFJlbW92ZURlbGVnYXRlQ2FsbCwgVXBkYXRlRGVsZWdhdGVDYWxsLCBQcm94eUV2YWx1YXRvciwgR2V0TWFpbFRpcHNDYWxsLCBBbGxSZXF1ZXN0cywgQXV0aGVudGljYXRpb24sIFdDRiwgR2V0VXNlckNvbmZpZ3VyYXRpb25DYWxsLCBDcmVhdGVVc2VyQ29uZmlndXJhdGlvbkNhbGwsIERlbGV0ZVVzZXJDb25maWd1cmF0aW9uQ2FsbCwgVXBkYXRlVXNlckNvbmZpZ3VyYXRpb25DYWxsLCBUaHJvdHRsaW5nLCBFeHRlcm5hbFVzZXIsIEdldE9yZ2FuaXphdGlvbkNvbmZpZ3VyYXRpb25DYWxsLCBHZXRSb29tc0NhbGwsIEdldEZlZGVyYXRpb25JbmZvcm1hdGlvbiwgUGFydGljaXBhbnRMb29rdXBCYXRjaGluZywgQWxsUmVzcG9uc2VzLCBGYXVsdEluamVjdGlvbiwgR2V0SW5ib3hSdWxlc0NhbGwsIFVwZGF0ZUluYm94UnVsZXNDYWxsLCBHZXRDQVNNYWlsYm94LCBGYXN0VHJhbnNmZXIsIFN5bmNDb252ZXJzYXRpb25DYWxsLCBFTEMsIEFjdGl2aXR5Q29udmVydGVyLCBTeW5jUGVvcGxlQ2FsbCwgR2V0Q2FsZW5kYXJGb2xkZXJzQ2FsbCwgR2V0UmVtaW5kZXJzQ2FsbCwgU3luY0NhbGVuZGFyQ2FsbCwgUGVyZm9ybVJlbWluZGVyQWN0aW9uQ2FsbCwgUHJvdmlzaW9uQ2FsbCwgUmVuYW1lQ2FsZW5kYXJHcm91cENhbGwsIERlbGV0ZUNhbGVuZGFyR3JvdXBDYWxsLCBDcmVhdGVDYWxlbmRhckNhbGwsIFJlbmFtZUNhbGVuZGFyQ2FsbCwgRGVsZXRlQ2FsZW5kYXJDYWxsLCBTZXRDYWxlbmRhckNvbG9yQ2FsbCwgU2V0Q2FsZW5kYXJHcm91cE9yZGVyQ2FsbCwgQ3JlYXRlQ2FsZW5kYXJHcm91cENhbGwsIE1vdmVDYWxlbmRhckNhbGwsIEdldEZhdm9yaXRlc0NhbGwsIFVwZGF0ZUZhdm9yaXRlRm9sZGVyQ2FsbCwgR2V0VGltZVpvbmVPZmZzZXRzQ2FsbCwgQXV0aG9yaXphdGlvbiwgU2VuZENhbGVuZGFyU2hhcmluZ0ludml0ZUNhbGwsIEdldENhbGVuZGFyU2hhcmluZ1JlY2lwaWVudEluZm9DYWxsLCBBZGRTaGFyZWRDYWxlbmRhckNhbGwsIEZpbmRQZW9wbGVDYWxsLCBGaW5kUGxhY2VzQ2FsbCwgVXNlclBob3RvcywgR2V0UGVyc29uYUNhbGwsIEdldEV4dGVuc2liaWxpdHlDb250ZXh0Q2FsbCwgU3Vic2NyaWJlSW50ZXJuYWxDYWxlbmRhckNhbGwsIFN1YnNjcmliZUludGVybmV0Q2FsZW5kYXJDYWxsLCBHZXRVc2VyQXZhaWxhYmlsaXR5SW50ZXJuYWxDYWxsLCBBcHBseUNvbnZlcnNhdGlvbkFjdGlvbkNhbGwsIEdldENhbGVuZGFyU2hhcmluZ1Blcm1pc3Npb25zQ2FsbCwgU2V0Q2FsZW5kYXJTaGFyaW5nUGVybWlzc2lvbnNDYWxsLCBTZXRDYWxlbmRhclB1Ymxpc2hpbmdDYWxsLCBVQ1MsIEdldFRhc2tGb2xkZXJzQ2FsbCwgQ3JlYXRlVGFza0ZvbGRlckNhbGwsIFJlbmFtZVRhc2tGb2xkZXJDYWxsLCBEZWxldGVUYXNrRm9sZGVyQ2FsbCwgTWFzdGVyQ2F0ZWdvcnlMaXN0Q2FsbCwgR2V0Q2FsZW5kYXJGb2xkZXJDb25maWd1cmF0aW9uQ2FsbCwgT25saW5lTWVldGluZywgTW9kZXJuR3JvdXBzLCBDcmVhdGVVbmlmaWVkTWFpbGJveCwgQWRkQWdncmVnYXRlZEFjY291bnQsIFJlbWluZGVycywgR2V0QWdncmVnYXRlZEFjY291bnQsIFJlbW92ZUFnZ3JlZ2F0ZWRBY2NvdW50LCBTZXRBZ2dyZWdhdGVkQWNjb3VudCwgV2VhdGhlciwgR2V0UGVvcGxlSUtub3dHcmFwaENhbGwsIEFkZEV2ZW50VG9NeUNhbGVuZGFyLCBDb252ZXJzYXRpb25BZ2dyZWdhdGlvbiwgSXNPZmZpY2UzNjVEb21haW4sIFJlZnJlc2hHQUxDb250YWN0c0ZvbGRlciwgT3B0aW9ucywgT3BlblRlbmFudE1hbmFnZXIsIE1hcmtBbGxJdGVtc0FzUmVhZCwgR2V0Q29udmVyc2F0aW9uSXRlbXMsIEdldExpa2VycywgR2V0VXNlclVuaWZpZWRHcm91cHMsIFBlb3BsZUlDb21tdW5pY2F0ZVdpdGgsIFN5bmNQZXJzb25hQ29udGFjdHNCYXNlLCBTeW5jQXV0b0NvbXBsZXRlUmVjaXBpZW50cywgU2V0VW5pZmllZEdyb3VwRmF2b3JpdGVTdGF0ZSwgR2V0VW5pZmllZEdyb3VwRGV0YWlscywgR2V0VW5pZmllZEdyb3VwTWVtYmVycywgU2V0VW5pZmllZEdyb3VwVXNlclN1YnNjcmliZVN0YXRlLCBKb2luUHJpdmF0ZVVuaWZpZWRHcm91cCwgQXBwbHlCdWxrSXRlbUFjdGlvbkNhbGwsIENyZWF0ZVN3ZWVwUnVsZUZvclNlbmRlckNhbGwsIENyZWF0ZVVuaWZpZWRHcm91cCwgVmFsaWRhdGVVbmlmaWVkR3JvdXBBbGlhcywgSW1wb3J0Q2FsZW5kYXJFdmVudCwgUmVtb3ZlVW5pZmllZEdyb3VwLCBTZXRVbmlmaWVkR3JvdXBNZW1iZXJzaGlwU3RhdGUsIEdldFVuaWZpZWRHcm91cFVuc2VlbkRhdGEsIFNldFVuaWZpZWRHcm91cFVuc2VlbkRhdGEsIFVwZGF0ZVVuaWZpZWRHcm91cCwgR2V0QXZhaWxhYmxlQ3VsdHVyZXMsIFVzZXJTb2NpYWxBY3Rpdml0eU5vdGlmaWNhdGlvbiwgR2V0U29jaWFsQWN0aXZpdHlOb3RpZmljYXRpb25zLCBDaGFubmVsRXZlbnQsIEdldFVuaWZpZWRHcm91cHNTZXR0aW5ncywgR2V0UGVvcGxlSW5zaWdodHMsIEdldFVuaWZpZWRHcm91cFVuc2VlbkNvdW50LCBTZXRVbmlmaWVkR3JvdXBMYXN0VmlzaXRlZFRpbWUsIENvbnRhY3RQcm9wZXJ0eVN1Z2dlc3Rpb24sIEdldFVuaWZpZWRHcm91cFNlbmRlclJlc3RyaWN0aW9ucywgU2V0VW5pZmllZEdyb3VwU2VuZGVyUmVzdHJpY3Rpb25zLCBDb252ZXJ0SWNzVG9DYWxlbmRhckl0ZW0sIE1lc3NhZ2VMYXRlbmN5LCBHZXRQZW9wbGVJbnNpZ2h0c1Rva2VucywgU2V0UGVvcGxlSW5zaWdodHNUb2tlbnMsIERlbGV0ZVBlb3BsZUluc2lnaHRzVG9rZW5zLCBFeGVjdXRlU2VhcmNoLCBQcm9jZXNzQ29tcGxpYW5jZU9wZXJhdGlvbkNhbGwsIERlbGVnYXRlQ29tbWFuZEJhc2UsIEdldFN1Z2dlc3RlZFVuaWZpZWRHcm91cHMsIE9EYXRhQ29tbW9uLCBPRGF0YVB1c2hOb3RpZmljYXRpb24KSW5mb1dvcmtlci5SZXF1ZXN0RGlzcGF0Y2g6IFJlcXVlc3RSb3V0aW5nLCBEaXN0cmlidXRpb25MaXN0SGFuZGxpbmcsIFByb3h5V2ViUmVxdWVzdCwgRmF1bHRJbmplY3Rpb24sIEdldEZvbGRlclJlcXVlc3QKSW5mb1dvcmtlci5BdmFpbGFiaWxpdHk6IEluaXRpYWxpemUsIFNlY3VyaXR5LCBDYWxlbmRhclZpZXcsIENvbmZpZ3VyYXRpb24sIFB1YmxpY0ZvbGRlclJlcXVlc3QsIEludHJhU2l0ZUNhbGVuZGFyUmVxdWVzdCwgTWVldGluZ1N1Z2dlc3Rpb25zLCBBdXRvRGlzY292ZXIsIE1haWxib3hDb25uZWN0aW9uQ2FjaGUsIFBGRCwgRG5zUmVhZGVyLCBNZXNzYWdlLCBGYXVsdEluamVjdGlvbgo='))} 
 	elseif ($Transport) {$string += [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String('STRINGHERE'))}
-	else {$string += [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String([regex]::matches($(Read-Host -Prompt 'Please enter ExTRA configuration'),'(?<=@).*(?=\^)').value))}	
-	$string += "TransportRuleAgent:FaultInjection`nFilteredTracing:No`nInMemoryTracing:No`n"
+	else 
+	{
+		#Replaced Base63 with Base64+GZip
+		$data = [System.Convert]::FromBase64String([regex]::matches($(Read-Host -Prompt 'Please enter ExTRA configuration'),'(?<=@).*(?=\^)').value)
+		$ms = New-Object System.IO.MemoryStream
+		$ms.Write($data, 0, $data.Length)
+		$ms.Seek(0,0) | Out-Null
+		$string += $(New-Object System.IO.StreamReader(New-Object System.IO.Compression.GZipStream($ms, [System.IO.Compression.CompressionMode]::Decompress))).readtoend()
+	}	
+	$string += "TransportRuleAgent:FaultInjection`nFilteredTracing:No`nInMemoryTracing:No"
 	new-item -path "C:\EnabledTraces.Config" -type file -force | Out-Null
 	$string | Out-File -filepath "C:\EnabledTraces.Config" -Encoding ASCII -Append | Out-Null
 }
@@ -215,13 +224,13 @@ Function StartTrace
 
 Function StopTrace
 {
-	if ($logpath -eq "") {$logpath = "C:\extra\"} elseif ($logpath.EndsWith("\")) {$logpath = $logpath} else {$logpath = $logpath + "\"}
+	if ($LogPath -eq "") {$LogPath = "C:\extra\" + $(get-date -f HHmmssddMMyy)} elseif ($LogPath.EndsWith("\")) {$LogPath = $LogPath + $(get-date -f HHmmssddMMyy) + "\"} else {$LogPath = $LogPath + "\" +  + $(get-date -f HHmmssddMMyy) + "\"}
 	# Convert logpath to UNC adminshare path
-	$TRACES_FILEPATH = "\\" + (hostname) + "\"+ $logpath.replace(':','$') + $(get-date -f HHmmssddMMyy)
+	$TRACES_FILEPATH = "\\" + (hostname) + "\"+ $LogPath.replace(':','$')
 	# create target path if it does not exist yet
 	if (-not (Test-Path $TRACES_FILEPATH)) {
 		New-Item $TRACES_FILEPATH -ItemType Directory | Out-Null
-		Write-Host "Created $TRACES_FILEPATH as it did not exist yet" $nl
+		Write-Host "Created $LogPath as it did not exist yet" $nl
 	}
 	$servlist = GetExchServers
 	foreach ($s in $servlist)
@@ -249,11 +258,12 @@ Function StopTrace
         Catch { Write-Host "FAILED "-ForegroundColor red $nl; Continue }
 		Write-Host "COMPLETED`n" -ForegroundColor Green
 	}
-	Write-Host "Logs can be found in" $logpath
+	Write-Host "Logs can be found in" $LogPath
 }
 
 Function Generate
 {
+
 	$comment = $nul
     Write-Host "Input trace lines. Empty line to finish" -ForegroundColor Green $nl																					 
     #prompt for trace definations
@@ -262,13 +272,20 @@ Function Generate
         if ($input -eq '') {break}
         Else {$string += $input + "`n"}
     }																					
-    $Encodedstring =[Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($string))
-	# Add padding and comment
+	#Replaced Base63 with Base64+GZip
+	# $Encodedstring =[Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($string))
+	$ms = New-Object System.IO.MemoryStream
+	$cs = New-Object System.IO.Compression.GZipStream($ms, [System.IO.Compression.CompressionMode]::Compress)
+	$sw = New-Object System.IO.StreamWriter($cs)
+	$sw.Write($string)
+	$sw.Close();
+	$Encodedstring = [Convert]::ToBase64String($ms.ToArray())
 	
+	# Add padding and comment
 	Write-Host "Input comment." -ForegroundColor Green $nl	
 	$comment = Read-Host -Prompt ' '
 	$EncodedText = "#*ExTRACFG-*$comment-@$Encodedstring^end#"
-	Write-Host "Send the following line to customer for ExTRA Trace Configuration.`nConfig has been copied to clipboard" -ForegroundColor Green $nl
+	Write-Host "Config has been copied to clipboard" -ForegroundColor Green $nl
 	Write-Host $EncodedText
 	Set-CB $EncodedText
 }
