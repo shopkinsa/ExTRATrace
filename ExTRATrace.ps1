@@ -71,16 +71,16 @@ if (($Start -and $Generate)) {
 
 # Set clipboard
 function Set-CB() {
-    Param(
-      [Parameter(ValueFromPipeline=$true)]
-      [string] $text
-    )
-    Add-Type -AssemblyName System.Windows.Forms
-    $tb = New-Object System.Windows.Forms.TextBox
-    $tb.Multiline = $true
-    $tb.Text = $text
-    $tb.SelectAll()
-    $tb.Copy()
+	Param(
+	  [Parameter(ValueFromPipeline=$true)]
+	  [string] $text
+	)
+	Add-Type -AssemblyName System.Windows.Forms
+	$tb = New-Object System.Windows.Forms.TextBox
+	$tb.Multiline = $true
+	$tb.Text = $text
+	$tb.SelectAll()
+	$tb.Copy()
 }
 
 function CreateExtraTraceConfig
@@ -104,7 +104,8 @@ function CreateExtraTraceConfig
 
 function GetExchServers
 {
-    # if no server is specified to the script, use the local computer name
+	$return = @()
+	# if no server is specified to the script, use the local computer name
 	if(!$Servers)
 	{
 		$Servers = ${env:computername}
@@ -264,9 +265,9 @@ Function StopTrace
 Function Generate
 {
 	$comment = $nul
-    Write-Host "Input trace lines. Empty line to finish" -ForegroundColor Green $nl																					 
-    #prompt for trace definations
-    while ($true) {
+	Write-Host "Input trace lines. Empty line to finish" -ForegroundColor Green $nl																					 
+	#prompt for trace definations
+	while ($true) {
         $input = Read-Host -Prompt ' '
         if ($input -eq '') {break}
         Else {$string += $input + "`n"}
