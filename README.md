@@ -28,7 +28,7 @@ Parameter | Description
 -Generate | Interactive session to create an ExTRA Trace configuration 
 -FreeBusy | Use preconfigured tags for Free/Busy diagnostic
 -LogPath | Sets the directory location of where the ETL files will be consolidated. Default Location is C:\extra on the local server.
--Manual | (WIP) Use prebuilt EnabledTraces.Config. Must be located in the same path as ExTRATrace.ps1
+-Manual | Use prebuilt EnabledTraces.Config. Must be located in the same path as ExTRATrace.ps1
 -Servers | Specify remote server(s) for tracing.  If no server(s) is specified, the local server will be used.
 -Start | Starts an ExTRA trace
 
