@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-	Version: 0.9.7
+	Version: 0.9.71
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -83,6 +83,17 @@ function Set-CB() {
 	$tb.Copy()
 }
 
+#Function to test if you are an admin on the server 
+Function Is-Admin {
+	$currentPrincipal = New-Object Security.Principal.WindowsPrincipal( [Security.Principal.WindowsIdentity]::GetCurrent() )
+	If( $currentPrincipal.IsInRole( [Security.Principal.WindowsBuiltInRole]::Administrator )) {
+		return $true
+	}
+	else {
+		return $false
+	}
+}
+
 function CreateExtraTraceConfig
 {
 	$string = "TraceLevels:Debug,Warning,Error,Fatal,Info,Pfd`n"
@@ -111,8 +122,7 @@ function GetExchServers
 		$Servers = ${env:computername}
         Write-Debug "No Server list specified. Using local Server..."
 	}
-	foreach($serv in $Servers)
-	{$return += (Get-ExchangeServer $serv)}
+	foreach($serv in $Servers) {If (Test-Connection -BufferSize 32 -Count 1 -ComputerName $serv -Quiet) {$return += (Get-ExchangeServer $serv)}}
 	return $return
 }
 
@@ -133,9 +143,47 @@ Function ConfirmAnswer
 	return $Confirm 
 }
 
-Function StartTrace 
+
+Function CreateTrace($s)
 {
 	Write-Host "Creating Trace... " -NoNewline
+	$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-ExTRA-$ts.etl -s $s -ow -f bin -max 1024"
+	# Create ExTRA Trace
+	Write-Debug $ExTRAcmd
+	Invoke-Expression -Command $ExTRAcmd | Out-Null
+	while (!($CheckifCreated = @(logman query -s $s) -match "ExchangeDebugTraces"))
+	{
+		Write-Host " Traced failed to create. Would you like to try creating it again? " -NoNewline
+		$answer = ConfirmAnswer
+		if ($answer -eq "yes"){Invoke-Expression -Command $ExTRAcmd | Out-Null}
+		if ($answer -eq "no"){End}
+	}
+	Write-Host "COMPLETED" -ForegroundColor green
+}
+
+Function InitTrace($s)
+{
+	Write-Host "Starting Trace... " -NoNewline
+	$ExTRAcmd = "logman start ExchangeDebugTraces -s $s"
+	# Create ExTRA Trace
+	Write-Debug $ExTRAcmd
+	Invoke-Expression -Command $ExTRAcmd | Out-Null
+	$CheckExTRA = @(logman query -s $s) -match "ExchangeDebugTraces"
+	$CheckifRunning = select-string -InputObject $CheckExTRA -pattern "Running" -quiet
+	if ($CheckifRunning)
+	{
+		Write-Host "COMPLETED" -ForegroundColor green
+	}
+}
+
+Function StartTrace
+{
+	if(-not (Is-Admin))
+	{
+        Write-Warning "The script needs to be executed in elevated mode. Start the Exchange Mangement Shell as an Administrator."
+        exit 
+	}
+	#Write-Host "Creating Trace... " -NoNewline
 	if ($manual -AND [System.IO.File]::Exists("$(Split-Path -parent $PSCommandPath)\EnabledTraces.Config"))
 	{
 		#Code for running trace with existing EnabledTraces.Config
@@ -153,40 +201,15 @@ Function StartTrace
 	$ts = get-date -f HHmmssddMMyy
 	foreach ($s in $servlist)
 	{
-		Write-Host "Enabling ExTRA tracing on" ($s) -ForegroundColor green $nl
+		Write-Host "`nEnabling ExTRA tracing on" ($s) -ForegroundColor green
 		If (Test-Connection -BufferSize 32 -Count 1 -ComputerName $s -Quiet)
 		{
 			# Check if ExTRA Trace already exists
 			$CheckExTRA = @(logman query -s $s) -match "ExchangeDebugTraces"
 			if (!$CheckExTRA)
 			{
-				Write-Host "Creating Trace... " -NoNewline
-				$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-ExTRA-$ts.etl -s $s -ow -f bin -max 1024"
-				# Create ExTRA Trace
-				Write-Debug $ExTRAcmd
-				Invoke-Expression -Command $ExTRAcmd
-				while (!($CheckifCreated = @(logman query -s $s) -match "ExchangeDebugTraces"))
-				{
-					Write-Host " Traced failed to create. Would you like to try creating it again? " -NoNewline
-					$answer = ConfirmAnswer
-					if ($answer -eq "yes"){Invoke-Expression -Command $ExTRAcmd}
-					if ($answer -eq "no"){End}
-				}
-				Write-Host "COMPLETED" -ForegroundColor green
-				Write-Host "Starting Trace... " -NoNewline
-				$ExTRAcmd = "logman start ExchangeDebugTraces -s $s"
-				# Create ExTRA Trace
-				Write-Debug $ExTRAcmd
-				Invoke-Expression -Command $ExTRAcmd
-				$CheckExTRA = @(logman query -s $ServerName) -match "ExchangeDebugTraces"
-				$CheckifRunning = select-string -InputObject $CheckExTRA -pattern "Running" -quiet
-				if ($CheckifRunning)
-				{
-					Write-Host "COMPLETED" -ForegroundColor green
-					$cmd = "logman stop -n ExchangeDebugTraces -s $Servername"
-					$StopExmon = Invoke-Expression -Command $cmd
-					Write-Host ""
-				}
+				createtrace($s)
+				inittrace($s)
 			}
 			else
 			{
@@ -202,24 +225,11 @@ Function StartTrace
 				Write-Host "Deleting and recreating ExchangeDebugTraces"
 				$cmd = "logman delete ExchangeDebugTraces -s $s"
 				$DeleteExTRA = Invoke-Expression -Command $Cmd 
-				# Create ExTRA Trace
-				$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-ExTRA-$ts.etl -s $s -ow -f bin -max 1024"
-				Write-Debug $ExTRAcmd
-				Invoke-Expression -Command $ExTRAcmd
-				while (!($CheckifCreated = @(logman query -s $s) -match "ExchangeDebugTraces"))
-				{
-					Write-Host "ExTRA Traced failed to create. Would you like to try creating it again? " -NoNewline
-					$answer = ConfirmAnswer
-					if ($answer -eq "yes"){Invoke-Expression -Command $ExTRAcmd}
-					if ($answer -eq "no"){End}
-				}
+				createtrace($s)
+				inittrace($s)
 			}
 		}
-		Else
-		{
-			Write-Host "Server $s cannot be contacted. Skipping..."  -foregroundcolor Red $nl
-			Continue
-		}
+		Else {Write-Host "Server $s cannot be contacted. Skipping..."  -foregroundcolor Red $nl; Continue}
 	}
 }
 
@@ -231,47 +241,51 @@ Function StopTrace
 	# create target path if it does not exist yet
 	if (-not (Test-Path $TRACES_FILEPATH)) {
 		New-Item $TRACES_FILEPATH -ItemType Directory | Out-Null
-		Write-Host "Created $LogPath as it did not exist yet" $nl
+		#Write-Host "Created $LogPath as it did not exist yet" $nl
 	}
 	$servlist = GetExchServers
 	foreach ($s in $servlist)
 	{
-		$CheckExmon = @(logman query -s $s) -match "ExchangeDebugTraces"
-		$CheckifRunning = select-string -InputObject $CheckExmon -pattern "Running" -quiet
-		if (!$CheckifRunning)
+		If (Test-Connection -BufferSize 32 -Count 1 -ComputerName $s -Quiet)
 		{
-			Write-Host "Stopping trace on $s... " -NoNewline
-			$Error.Clear()
-			$cmd = "logman stop -n ExchangeDebugTraces -s $s"
-			$StopTrace = Invoke-Expression -Command $cmd
-			if ($Error){Write-host "Error encountered" -ForegroundColor Red; Continue}
-			else {Write-Host "COMPLETED`n" -ForegroundColor Green}
-			Write-Host "Removing trace on $s... " -NoNewline
-			$Error.Clear()
-			$cmd = "logman delete ExchangeDebugTraces -s $s"
-			$StopTrace = Invoke-Expression -Command $cmd
-			if ($Error){Write-host "Error encountered" -ForegroundColor Red}
-			else {Write-Host "COMPLETED`n" -ForegroundColor Green}
+			$CheckExmon = @(logman query -s $s) -match "ExchangeDebugTraces"
+			$CheckifRunning = select-string -InputObject $CheckExmon -pattern "Running" -quiet
+			if ($CheckifRunning)
+			{
+				Write-Host "Stopping trace on $s... " -NoNewline
+				$Error.Clear()
+				$cmd = "logman stop -n ExchangeDebugTraces -s $s"
+				$StopTrace = Invoke-Expression -Command $cmd
+				if ($Error){Write-host "Error encountered" -ForegroundColor Red; Continue}
+				else {Write-Host "COMPLETED" -ForegroundColor Green}
+				Write-Host "Removing trace on $s... " -NoNewline
+				$Error.Clear()
+				$cmd = "logman delete ExchangeDebugTraces -s $s"
+				$StopTrace = Invoke-Expression -Command $cmd
+				if ($Error){Write-host "Error encountered" -ForegroundColor Red}
+				else {Write-Host "COMPLETED" -ForegroundColor Green}
+			}
+			Write-Host "Transfering trace logs from $s... " -NoNewline
+			$fileToMovePath = "\\" + $s + "\c$\tracing\*.etl"
+			try { Move-Item $fileToMovePath $TRACES_FILEPATH -Force}
+			Catch { Write-Host "FAILED "-ForegroundColor red $nl; Continue }
+			Write-Host "COMPLETED`n" -ForegroundColor Green
 		}
-		Write-Host "Transfering trace logs from $s... " -NoNewline
-		$fileToMovePath = "\\" + $s + "\c$\tracing\*.etl"
-	    try { Move-Item $fileToMovePath $TRACES_FILEPATH -Force}
-        Catch { Write-Host "FAILED "-ForegroundColor red $nl; Continue }
-		Write-Host "COMPLETED`n" -ForegroundColor Green
+		else {Write-Host "Server $s cannot be contacted. Skipping..."  -foregroundcolor Red $nl; Continue}
 	}
-	Write-Host "Logs can be found in" $LogPath
+	Write-Host "Logs can be found in" $LogPath $nl
 }
 
 Function Generate
 {
 	$comment = $nul
-	Write-Host "Input trace lines. Empty line to finish" -ForegroundColor Green $nl																					 
+	Write-Host "Input trace lines. Empty line to finish" -ForegroundColor Green $nl
 	#prompt for trace definations
 	while ($true) {
         $input = Read-Host -Prompt ' '
         if ($input -eq '') {break}
         Else {$string += $input + "`n"}
-    }																					
+	}																					
 	#Replaced Base63 with Base64+GZip
 	# $Encodedstring =[Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($string))
 	$ms = New-Object System.IO.MemoryStream
@@ -291,5 +305,5 @@ Function Generate
 }
 
 if ($generate) {Generate; exit;}
-if ($start) {StartTrace; [void](Read-Host 'Press Enter to continue…'); StopTrace; exit;}
+if ($start) {StartTrace; [void](Read-Host 'Trace in progress. Press ENTER to stop'); StopTrace; exit;}
 if ($stop) {StopTrace; exit;}
