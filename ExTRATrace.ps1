@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-	Version: 0.9.71
+	Version: 0.9.72
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -123,6 +123,11 @@ function GetExchServers
         Write-Debug "No Server list specified. Using local Server..."
 	}
 	foreach($serv in $Servers) {If (Test-Connection -BufferSize 32 -Count 1 -ComputerName $serv -Quiet) {$return += (Get-ExchangeServer $serv)}}
+	if($return.Count -eq 0)
+	{
+		Write-Red("Error: No Exchnage servers found using the specified names")
+		Exit
+	}
 	return $return
 }
 
@@ -183,6 +188,7 @@ Function StartTrace
         Write-Warning "The script needs to be executed in elevated mode. Start the Exchange Mangement Shell as an Administrator."
         exit 
 	}
+	$servlist = GetExchServers
 	#Write-Host "Creating Trace... " -NoNewline
 	if ($manual -AND [System.IO.File]::Exists("$(Split-Path -parent $PSCommandPath)\EnabledTraces.Config"))
 	{
@@ -196,7 +202,6 @@ Function StartTrace
 	{
 	CreateExtraTraceConfig
 	}
-	$servlist = GetExchServers
 	$filepath = "c:\tracing\"
 	$ts = get-date -f HHmmssddMMyy
 	foreach ($s in $servlist)
