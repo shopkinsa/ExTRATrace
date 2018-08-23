@@ -125,7 +125,7 @@ function GetExchServers
 	foreach($serv in $Servers) {If (Test-Connection -BufferSize 32 -Count 1 -ComputerName $serv -Quiet) {$return += (Get-ExchangeServer $serv)}}
 	if($return.Count -eq 0)
 	{
-		Write-Red("Error: No Exchnage servers found using the specified names")
+		Write-Host "No Exchnage servers found using the specified names"  -foregroundcolor Red $nl
 		Exit
 	}
 	return $return
