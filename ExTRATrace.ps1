@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-	Version: 0.9.72
+	Version: 0.9.75
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -151,6 +151,9 @@ Function ConfirmAnswer
 
 Function CreateTrace($s)
 {
+	Write-Host "Moving EnabledTraces.Config... " -NoNewline
+	try { Copy-Item "C:\EnabledTraces.Config" ("\\" + $s + "\c$\EnabledTraces.config") -Force }
+	Catch { Write-Host "FAILED."-ForegroundColor red $nl; return $false}
 	Write-Host "Creating Trace... " -NoNewline
 	$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-ExTRA-$ts.etl -s $s -ow -f bin -max 1024"
 	# Create ExTRA Trace
@@ -163,14 +166,13 @@ Function CreateTrace($s)
 		if ($answer -eq "yes"){Invoke-Expression -Command $ExTRAcmd | Out-Null}
 		if ($answer -eq "no"){End}
 	}
-	Write-Host "COMPLETED" -ForegroundColor green
+	return $true
 }
 
 Function InitTrace($s)
 {
 	Write-Host "Starting Trace... " -NoNewline
 	$ExTRAcmd = "logman start ExchangeDebugTraces -s $s"
-	# Create ExTRA Trace
 	Write-Debug $ExTRAcmd
 	Invoke-Expression -Command $ExTRAcmd | Out-Null
 	$CheckExTRA = @(logman query -s $s) -match "ExchangeDebugTraces"
@@ -213,8 +215,8 @@ Function StartTrace
 			$CheckExTRA = @(logman query -s $s) -match "ExchangeDebugTraces"
 			if (!$CheckExTRA)
 			{
-				createtrace($s)
-				inittrace($s)
+				if (createtrace($s)){
+					inittrace($s)
 			}
 			else
 			{
