@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-	Version: 0.9.76
+	Version: 0.9.79
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -151,9 +151,13 @@ Function ConfirmAnswer
 
 Function CreateTrace($s)
 {
-	Write-Host "Moving EnabledTraces.Config... " -NoNewline
-	try { Copy-Item "C:\EnabledTraces.Config" ("\\" + $s + "\c$\EnabledTraces.config") -Force }
-	Catch { Write-Host "FAILED."-ForegroundColor red $nl; return $false}
+
+	if($Servers)
+	{
+        Write-Host "Moving EnabledTraces.Config... " -NoNewline
+	    try { Copy-Item "C:\EnabledTraces.Config" ("\\" + $s + "\c$\EnabledTraces.config") -Force }
+	    Catch { Write-Host "FAILED."-ForegroundColor red $nl; return $false}
+	}
 	Write-Host "Creating Trace... " -NoNewline
 	$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-ExTRA-$ts.etl -s $s -ow -f bin -max 1024"
 	# Create ExTRA Trace
@@ -225,9 +229,14 @@ Function StartTrace
 				$CheckifRunning = select-string -InputObject $CheckExTRA -pattern "Running" -quiet
 				if ($CheckifRunning)
 				{
-					$cmd = "logman stop ExchangeDebugTraces -s $s"
-					$StopExTRA = Invoke-Expression -Command $Cmd
-					Start-Sleep 2
+					Write-Host "Trace is running. Would you like stop it and recreate it? " -NoNewline
+					$answer = ConfirmAnswer
+					if ($answer -eq "yes"){
+						$cmd = "logman stop ExchangeDebugTraces -s $s"
+						$StopExTRA = Invoke-Expression -Command $Cmd
+						Start-Sleep 2
+					}
+					if ($answer -eq "no"){End}
 				}
 				#Delete and recreate ExTRA tracing
 				Write-Host "Deleting and recreating ExchangeDebugTraces"
