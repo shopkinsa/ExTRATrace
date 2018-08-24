@@ -1,7 +1,7 @@
 # ExTRATrace
 This script starts and stops logman trace collection on one or many Exchange servers simultaneously. After collection is stopped logs are collected to local server for review.Engineers can generate ExTRA configuration strings to provide to end users to collect specific datafrom Exchange.
 
-Exchange 2010SP3, 2013, and 2016 supported as long as compatible tags are provided.
+Exchange 2010SP3, 2013, 2016 and 2019 supported as long as compatible tags are provided.
 
 # Usage Examples
 
