@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-	Version: 0.9.75
+	Version: 0.9.76
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -217,6 +217,7 @@ Function StartTrace
 			{
 				if (createtrace($s)){
 					inittrace($s)
+				}
 			}
 			else
 			{
