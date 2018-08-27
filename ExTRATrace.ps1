@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-	Version: 0.9.79
+	Version: 0.9.80
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -159,7 +159,8 @@ Function CreateTrace($s)
 	    Catch { Write-Host "FAILED."-ForegroundColor red $nl; return $false}
 	}
 	Write-Host "Creating Trace... " -NoNewline
-	$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-ExTRA-$ts.etl -s $s -ow -f bin -max 1024"
+	$ver = Invoke-Command -ComputerName $s.Name -ScriptBlock {$(Get-Command Exsetup.exe).version.ToString()}
+	$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $filepath$s-$ver-$ts.etl -s $s -ow -f bin -max 1024"
 	# Create ExTRA Trace
 	Write-Debug $ExTRAcmd
 	Invoke-Expression -Command $ExTRAcmd | Out-Null
@@ -208,8 +209,8 @@ Function StartTrace
 	{
 	CreateExtraTraceConfig
 	}
-	$filepath = "c:\tracing\"
 	$ts = get-date -f HHmmssddMMyy
+	$filepath = "c:\tracing\$ts\"
 	foreach ($s in $servlist)
 	{
 		Write-Host "`nEnabling ExTRA tracing on" ($s) -ForegroundColor green
@@ -252,7 +253,7 @@ Function StartTrace
 
 Function StopTrace
 {
-	if ($LogPath -eq "") {$LogPath = "C:\extra\" + $(get-date -f HHmmssddMMyy)} elseif ($LogPath.EndsWith("\")) {$LogPath = $LogPath + $(get-date -f HHmmssddMMyy) + "\"} else {$LogPath = $LogPath + "\" +  + $(get-date -f HHmmssddMMyy) + "\"}
+	if ($LogPath -eq "") {$LogPath = "C:\extra\" + $ts} elseif ($LogPath.EndsWith("\")) {$LogPath = $LogPath + $(get-date -f HHmmssddMMyy) + "\"} else {$LogPath = $LogPath + "\" +  + $(get-date -f HHmmssddMMyy) + "\"}
 	# Convert logpath to UNC adminshare path
 	$TRACES_FILEPATH = "\\" + (hostname) + "\"+ $LogPath.replace(':','$')
 	# create target path if it does not exist yet
