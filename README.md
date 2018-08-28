@@ -4,7 +4,7 @@ This script starts and stops logman trace collection on one or many Exchange ser
 Exchange 2010SP3, 2013, 2016 and 2019 supported as long as compatible tags are provided.
 
 # Download 
-Download the latest release [here.](https://github.com/shopkinsa/ExTRATrace/releases)
+Download the latest release [here.](https://github.com/shopkinsa/ExTRATrace/releases/latest)
 
 # Usage Examples
 
