@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-	Version: 0.9.87
+	Version: 0.9.89
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -31,6 +31,10 @@
 	Used to generate Base64 configuration file for debuging tags
 .PARAMETER LogPath
 	Specify local log consolidation path.
+.PARAMETER Size
+	Specify size of log files
+.PARAMETER NoZip
+	Disable zipping of logs after collection
 .EXAMPLE
 	.\ExTRAtrace.ps1 -Generate
 	Interactive Configuration generator
