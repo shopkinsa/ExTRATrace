@@ -1,7 +1,7 @@
 <#
 .NOTES
 	Name: ExTRAtrace.ps1
-	Version: 0.9.81
+	Version: 0.9.89
 	Author: Shaun Hopkins
 	Original Author: Matthew Huynh
 	Requires: Exchange Management Shell and administrator rights on the target Exchange
@@ -25,27 +25,27 @@
 .PARAMETER Servers
 	This optional parameter allows multiple target Exchange servers to be specified. If it is not the 		
 	local server is assumed.
-.PARAMETER Start
-	Starts log trace after prompting for configuration data
 .PARAMETER FreeBusy
 	Use prebuilt configuration for Free Busy tracing
-.PARAMETER Stop
-	Stops log tracing, cleans up collection, and consolidates all logs to a central folder.
 .PARAMETER Generate
 	Used to generate Base64 configuration file for debuging tags
 .PARAMETER LogPath
 	Specify local log consolidation path.
+.PARAMETER Size
+	Specify size of log files
+.PARAMETER NoZip
+	Disable zipping of logs after collection
 .EXAMPLE
 	.\ExTRAtrace.ps1 -Generate
 	Interactive Configuration generator
 .EXAMPLE
-	.\ExTRAtrace.ps1 -Start
-	Start ExTRA log generation after prompting for configuration
+	.\ExTRAtrace.ps1
+	Start ExTRA log generation on the local server
 .EXAMPLE
-	.\ExTRAtrace.ps1 -Start -LogPath "D:\logs\extra\"
-	Start ExTRA log generation after prompting for configuration
+	.\ExTRAtrace.ps1 -LogPath "D:\logs\extra\"
+	Start ExTRA log generation on the local server and save logs into "D:\logs\extra\"
 .EXAMPLE
-	.\ExTRAtrace.ps1 -Start -Servers NA-EXCH01,NA-EXCH02,NA-EXCH04
+	.\ExTRAtrace.ps1 -Servers NA-EXCH01,NA-EXCH02,NA-EXCH04
 	Start ExTRA log generation on multiple servers
 .LINK
     https://blogs.technet.microsoft.com/mahuynh/2016/08/05/script-enable-and-collect-extra-tracing-across-all-exchange-servers/
@@ -55,11 +55,10 @@
 Param(
  [Array]$Servers,
  [string]$LogPath, 
- [switch]$Start,
  [switch]$FreeBusy,
  [switch]$Generate,
- [switch]$Manual
- 
+ [switch]$NoZip,
+ [int]$size = 512
 )
 
 $script:nl = "`r`n"
@@ -101,7 +100,7 @@ function CreateExtraTraceConfig
 	elseif ($Transport) {$string += [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String('STRINGHERE'))}
 	else 
 	{
-		#Replaced Base63 with Base64+GZip
+		#Replaced Base64 with Base64+GZip
 		$data = [System.Convert]::FromBase64String([regex]::matches($(Read-Host -Prompt 'Please enter ExTRA configuration'),'(?<=@).*(?=\^)').value)
 		$ms = New-Object System.IO.MemoryStream
 		$ms.Write($data, 0, $data.Length)
@@ -110,7 +109,8 @@ function CreateExtraTraceConfig
 	}	
 	$string += "TransportRuleAgent:FaultInjection`nFilteredTracing:No`nInMemoryTracing:No"
 	new-item -path "C:\EnabledTraces.Config" -type file -force | Out-Null
-	$string | Out-File -filepath "C:\EnabledTraces.Config" -Encoding ASCII -Append | Out-Null
+	$string | Out-File -filepath "C:\EnabledTraces.Config" -Encoding ASCII | Out-Null
+	return $string
 }
 
 function GetExchServers
@@ -151,7 +151,6 @@ Function ConfirmAnswer
 
 Function CreateTrace($s)
 {
-
 	if($Servers)
 	{
         Write-Host "Moving EnabledTraces.Config... " -NoNewline
@@ -160,7 +159,7 @@ Function CreateTrace($s)
 	}
 	Write-Host "Creating Trace... " -NoNewline
 	$ver = Invoke-Command -ComputerName $s.Name -ScriptBlock {$(Get-Command Exsetup.exe).version.ToString()}
-	$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $tpath$s-$ver-$ts.etl -s $s -ow -f bin -max 1024"
+	$ExTRAcmd = "logman create trace ExchangeDebugTraces -p '{79bb49e6-2a2c-46e4-9167-fa122525d540}' -o $tpath$s-$ver-$script:ts.etl -s $s -ow -f bin -max $size"
 	# Create ExTRA Trace
 	Write-Debug $ExTRAcmd
 	Invoke-Expression -Command $ExTRAcmd | Out-Null
@@ -195,25 +194,36 @@ Function StartTrace
         Write-Warning "The script needs to be executed in elevated mode. Start the Exchange Mangement Shell as an Administrator."
         exit 
 	}
+	try { Add-Type -AssemblyName System.IO.Compression.Filesystem }
+	catch {
+		Write-Host("Failed to load .NET Compression assembly. Disabling the ability to zip data" -f $Script:LocalServerName)
+		$NoZip = $true
+	}
+	Remove-Item -Path C:\EnabledTraces.Config -Force | Out-Null
 	$servlist = GetExchServers
 	#Write-Host "Creating Trace... " -NoNewline
-	if ($manual -AND [System.IO.File]::Exists("$(Split-Path -parent $PSCommandPath)\EnabledTraces.Config"))
+	if ([System.IO.File]::Exists("$(Split-Path -parent $PSCommandPath)\EnabledTraces.Config"))
 	{
-		#Code for running trace with existing EnabledTraces.Config
-		Write-Host "Using existing EnabledTraces.Config... " -NoNewline
-		try { Move-Item "$(Split-Path -parent $PSCommandPath)\EnabledTraces.Config" "C:\EnabledTraces.Config" -Force}
-        Catch { Write-Host "FAILED."-ForegroundColor red $nl; Write-Host "Prompting for configuration... "; CreateExtraTraceConfig; Continue }
-		Write-Host "COMPLETED`n" -ForegroundColor Green
+		Write-Host "Config found in working directory. Would you like to use this? " -NoNewline
+		$answer = ConfirmAnswer
+		if ($answer -eq "yes"){
+			$string = Get-Content "$(Split-Path -parent $PSCommandPath)\EnabledTraces.Config" -Raw
+			new-item -path "C:\EnabledTraces.Config" -type file -force | Out-Null
+			$string | Out-File -filepath "C:\EnabledTraces.Config" -Encoding ASCII | Out-Null
+		}
+		if ($answer -eq "no"){
+			$string = CreateExtraTraceConfig
+		}
 	}
 	else
 	{
-	CreateExtraTraceConfig
+	$string = CreateExtraTraceConfig
 	}
-	$ts = get-date -f HHmmssddMMyy
-	$tpath = "c:\tracing\$ts\"
-	if ($LogPath -eq "") {$LogPath = "C:\extra\" + $ts} elseif ($LogPath.EndsWith("\")) {$LogPath = $LogPath + $ts + "\"} else {$LogPath = $LogPath + "\" +  + $ts + "\"}
+	$script:ts = get-date -f HHmmssddMMyy
+	$tpath = "c:\tracing\$script:ts\"
+	if ($script:LogPath -eq "") {$script:LogPath = "C:\extra\" + $script:ts} elseif ($script:LogPath.EndsWith("\")) {$script:LogPath = $script:LogPath + $script:ts + "\"} else {$script:LogPath = $script:LogPath + "\" +  + $script:ts + "\"}
 	# Convert logpath to UNC adminshare path
-	$TRACES_FILEPATH = "\\" + (hostname) + "\"+ $LogPath.replace(':','$')
+	$script:TRACES_FILEPATH = "\\" + (hostname) + "\"+ $script:LogPath.replace(':','$')
 	
 	foreach ($s in $servlist)
 	{
@@ -247,8 +257,9 @@ Function StartTrace
 				Write-Host "Deleting and recreating ExchangeDebugTraces"
 				$cmd = "logman delete ExchangeDebugTraces -s $s"
 				$DeleteExTRA = Invoke-Expression -Command $Cmd 
-				createtrace($s)
-				inittrace($s)
+				if (createtrace($s)){
+					inittrace($s)
+				}
 			}
 		}
 		Else {Write-Host "Server $s cannot be contacted. Skipping..."  -foregroundcolor Red $nl; Continue}
@@ -258,8 +269,8 @@ Function StartTrace
 Function StopTrace
 {
 	# create target path if it does not exist yet
-	if (-not (Test-Path $TRACES_FILEPATH)) {
-		New-Item $TRACES_FILEPATH -ItemType Directory | Out-Null
+	if (-not (Test-Path $script:TRACES_FILEPATH)) {
+		New-Item $script:TRACES_FILEPATH -ItemType Directory | Out-Null
 		#Write-Host "Created $LogPath as it did not exist yet" $nl
 	}
 	$servlist = GetExchServers
@@ -285,14 +296,29 @@ Function StopTrace
 				else {Write-Host "COMPLETED" -ForegroundColor Green}
 			}
 			Write-Host "Transfering trace logs from $s... " -NoNewline
-			$fileToMovePath = "\\" + $s + "\c$\tracing\" + $ts + "*.etl"
-			try { Move-Item $fileToMovePath $TRACES_FILEPATH -Force}
+			$fileToMovePath = "\\$s\c$\tracing\$script:ts"
+			Write-Verbose "$fileToMovePath >>> $script:LogPath"
+			try { Get-Childitem $fileToMovePath | Move-Item -destination $script:LogPath -Force}
 			Catch { Write-Host "FAILED "-ForegroundColor red $nl; Continue }
 			Write-Host "COMPLETED`n" -ForegroundColor Green
 		}
 		else {Write-Host "Server $s cannot be contacted. Skipping..."  -foregroundcolor Red $nl; Continue}
 	}
-	Write-Host "Logs can be found in" $LogPath $nl
+	while(-not($NoZip))
+	{
+		Write-Host "Zipping up the folder trace..." -NoNewline
+		$zippath = $script:LogPath+".zip"
+		try { [System.IO.Compression.ZipFile]::CreateFromDirectory($script:LogPath, $zippath)}
+		Catch { Write-Host "FAILED "-ForegroundColor red $nl; $NoZip = $true }
+		if((Test-Path -Path $zippath))
+		{
+			Write-Verbose "Deleting $script:LogPath"
+			Remove-Item "$script:LogPath" -Force -Recurse
+		}
+		Write-Host "COMPLETED`n" -ForegroundColor Green
+		$NoZip = $true 
+	}
+	Write-Host "Logs can be found at " $script:LogPath $nl
 }
 
 Function Generate
@@ -324,5 +350,4 @@ Function Generate
 }
 
 if ($generate) {Generate; exit;}
-if ($start) {StartTrace; [void](Read-Host 'Trace in progress. Press ENTER to stop'); StopTrace; exit;}
-if ($stop) {StopTrace; exit;}
+else {StartTrace; [void](Read-Host 'Trace in progress. Press ENTER to stop'); StopTrace; exit;}
