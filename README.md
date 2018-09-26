@@ -10,15 +10,15 @@ Download the latest release [here.](https://github.com/shopkinsa/ExTRATrace/rele
 
   - Start ExTRA trace after prompting for configuration
  
-    *.\ExTRAtrace.ps1 -Start*
+    *.\ExTRAtrace.ps1*
 
   - Start ExTRA trace on local server and consolidate logs into D:\logs\extra\
  
-    *.\ExTRAtrace.ps1 -Start -LogPath "D:\logs\extra\"*
+    *.\ExTRAtrace.ps1 -LogPath "D:\logs\extra\"*
 
   - Start ExTRA trace on multiple servers and consolidate all logs into D:\logs\extra\ on the local server
  
-    *.\ExTRAtrace.ps1 -Start -Servers NA-EXCH01,NA-EXCH02,NA-EXCH03 -LogPath "D:\logs\extra\"*
+    *.\ExTRAtrace.ps1 -Servers NA-EXCH01,NA-EXCH02,NA-EXCH03 -LogPath "D:\logs\extra\"*
 
   - Interactive Configuration generator
  
